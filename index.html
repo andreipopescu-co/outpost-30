@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Outpost 30: command a Moon or Mars outpost for 30 days. A Junior Astronaut Mission Trainer for the 2026 NASA Space Apps Challenge.">
+<title>Outpost 30</title>
+<style>body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one-column mission console. Scene window on top, gauges, then today's decisions. Single dark "flight console" world. */
+:root{
+  color-scheme:dark;
+  --bg:#0d1226; --panel:#161d3a; --panel-2:#1e2749; --line:#2e3a66;
+  --fg:#eef1fb; --muted:#a3add0;
+  --accent:#f2b84b;            /* sunlit gold: power, primary actions */
+  --site:#c9c3b4;              /* regolith grey (Moon) / rust (Mars) */
+  --good:#58d6a0; --warn:#f5c04e; --bad:#ff6b6b; --info:#7cc4ff;
+  --display:"Chakra Petch","Trebuchet MS",sans-serif;
+  --body:"Atkinson Hyperlegible",Verdana,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+.o30[data-site="mars"]{--site:#d9764a}
+html,body{background:var(--bg)}
+body{color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 40px}
+.o30{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.o30 *{box-sizing:border-box}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;line-height:1.15}
+h1{font-size:clamp(2.2rem,9vw,3.6rem);font-weight:700;letter-spacing:.01em}
+h2{font-size:1.25rem;font-weight:600}
+h3{font-size:1rem;font-weight:600}
+p{margin:0}
+.eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--site)}
+.muted{color:var(--muted)}
+.small{font-size:.875rem}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--info);outline-offset:2px}
+.btn{font-family:var(--display);font-weight:600;font-size:1.05rem;background:var(--accent);color:#231a05;border:0;border-radius:10px;padding:12px 20px;min-height:48px}
+.btn:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.btn.wide{width:100%}
+a{color:var(--info)}
+
+/* setup */
+.hero{display:flex;flex-direction:column;gap:10px;padding-block:8px}
+.hero p{max-width:60ch}
+.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.pick{text-align:left;background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.pick[aria-pressed="true"]{border-color:var(--accent);background:var(--panel-2)}
+.pick b{font-family:var(--display);font-size:1.1rem}
+.pick .tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.code-in{font-family:var(--mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;width:7.5em;font-size:1rem}
+.how{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.how div{border-top:2px solid var(--site);padding-top:8px}
+
+/* console */
+.topbar{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.daycount{font-family:var(--mono);font-weight:700;font-size:1.05rem}
+.scene{border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--panel)}
+.scene svg{display:block;width:100%;height:auto}
+.gauges{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (min-width:620px){.gauges{grid-template-columns:repeat(6,1fr)}}
+.g{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0;display:flex;flex-direction:column;gap:4px}
+.g .lab{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.g .val{font-family:var(--mono);font-weight:700;font-size:1.02rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.g .val small{font-weight:500;font-size:.7rem;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--bg);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--good);border-radius:3px}
+.g[data-s="warn"] .bar i{background:var(--warn)} .g[data-s="bad"] .bar i{background:var(--bad)}
+.g[data-s="bad"]{border-color:var(--bad)} .g[data-s="warn"]{border-color:var(--warn)}
+.g .left{font-size:.72rem;color:var(--muted);white-space:nowrap}
+
+.forecast{display:flex;gap:6px;flex-wrap:wrap}
+.fc{flex:1 1 60px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px;text-align:center;min-width:0}
+.fc b{display:block;font-family:var(--mono);font-size:.95rem}
+.fc span{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.fc[data-low="1"]{border-color:var(--warn)} .fc[data-low="1"] b{color:var(--warn)}
+.fc[data-today="1"]{background:var(--panel-2)}
+
+.event{border-color:var(--warn);background:var(--panel-2)}
+.event .fact{border-left:3px solid var(--info);padding-left:10px;color:var(--muted);font-size:.9rem}
+.event .fact b{color:var(--info);font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;display:block}
+.opt{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.opt button{text-align:left;background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:12px;min-height:48px}
+.opt button:hover{border-color:var(--accent)}
+.opt button b{display:block;font-family:var(--display)}
+.opt button span{font-size:.85rem;color:var(--muted)}
+
+.budget{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-family:var(--mono);font-size:.85rem}
+.budget b{color:var(--accent)}
+.budget .neg{color:var(--warn)}
+.sys{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;padding-block:10px;border-top:1px solid var(--line)}
+.sys .name{font-family:var(--display);font-weight:600}
+.sys .does{grid-column:1/-1;font-size:.85rem;color:var(--muted)}
+.step{display:flex;align-items:center;gap:8px}
+.step button{width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);font-size:1.4rem;font-family:var(--mono);line-height:1}
+.step button:disabled{opacity:.35;cursor:not-allowed}
+.pips{display:flex;gap:3px}
+.pips i{width:10px;height:22px;border-radius:3px;background:var(--bg);border:1px solid var(--line)}
+.pips i.on{background:var(--accent);border-color:var(--accent)}
+.lock{font-size:.8rem;color:var(--warn)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--panel-2);border-radius:999px;padding:8px 14px;min-height:40px;font-size:.9rem}
+.chip[aria-pressed="true"]{background:var(--accent);color:#231a05;border-color:var(--accent);font-weight:700}
+.coach{border-left:3px solid var(--good);padding:8px 12px;background:var(--panel);border-radius:0 10px 10px 0;font-size:.95rem}
+.coach b{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--good);display:block}
+.log{display:flex;flex-direction:column;gap:6px;font-size:.9rem;margin:0;padding:0;list-style:none}
+.log li{padding-left:14px;position:relative}
+.log li::before{content:"";position:absolute;left:0;top:.6em;width:6px;height:6px;border-radius:50%;background:var(--muted)}
+.log li.bad::before{background:var(--bad)} .log li.good::before{background:var(--good)} .log li.warn::before{background:var(--warn)}
+
+/* debrief */
+.medal{font-family:var(--display);font-size:clamp(1.8rem,7vw,2.6rem);font-weight:700}
+.sparks{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.spark{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
+.spark svg{display:block;width:100%;height:44px}
+.spark .lab{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.facts{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:8px;font-size:.92rem}
+footer{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .4s ease}.pips i{transition:background .15s}}
+</style>
+
+<div class="o30" id="app" data-site="moon"></div>
+
+<script>
+(function(){
+"use strict";
+/* ================= OUTPOST 30 — game model =================
+   All numbers marked [NASA] come from the sources listed in the README.
+   Everything else is a labelled simplification to keep a turn playable in a minute. */
+var DAYS=30, CREW=4;
+var O2_PER_DAY=0.84*CREW;          // [NASA] 0.84 kg O2 per person per day
+var WATER_PER_DAY=4*CREW;          // ~1 gallon (≈4 L) per person per day
+var RECOVERY=0.98, RECOVERY_CLOG=0.70; // [NASA] ISS reached 98% water recovery in 2023
+var ELECTROLYSIS=3.8;              // L of water split to make one day of crew O2 (1 kg water → 0.89 kg O2)
+var DOSE_LIMIT=50;                 // mSv: yearly limit for radiation workers on Earth
+var BATT_CAP=24, BASE_LOAD=2, REACTOR=2;
+var SITES={
+  moon:{name:"Shackleton Rim",world:"Moon",dayWord:"Day",solar:12,gcr:1.37,spe:45,gold:550,silver:350,
+    blurb:"South pole of the Moon. Bright sunlight most of the time, but the Sun sometimes hides behind the crater rim, and there is no air to block radiation.",
+    threat:"Main dangers: radiation and dark periods"},
+  mars:{name:"Jezero Crater",world:"Mars",dayWord:"Sol",solar:9,gcr:0.67,spe:12,gold:550,silver:350,
+    blurb:"An ancient river delta on Mars. The thin air blocks some radiation, but sunlight is weaker and dust storms can dim the sky for days.",
+    threat:"Main dangers: dust storms and weak sunlight"}
+};
+var SYS={
+  ls:{name:"Life support",max:4,does:"Makes oxygen from water and recycles water. Each level covers 1 of your 4 astronauts."},
+  gh:{name:"Greenhouse",max:3,does:"Grows food (30 meals every 10 growth points) and a little oxygen. Uses water. Plants wilt at level 0."},
+  sh:{name:"Shield rover",max:3,does:"Piles regolith (soil) over the habitat. Each level adds 4% radiation shielding."},
+  lab:{name:"Science lab",max:3,does:"The reason you came! Each level earns 10 science points. Needs the crew."}
+};
+var FACTS={
+  storm:"In 2018 a dust storm covered all of Mars. NASA's solar-powered Opportunity rover lost power and never woke up again.",
+  shadow:"NASA's Artemis program targets the Moon's south pole partly because some crater rims there get sunlight most of the year, but not all of it.",
+  spe:"In August 1972, between Apollo 16 and Apollo 17, a huge solar storm hit the Moon. Astronauts on the surface could have become very sick. Artemis crews practise building a storm shelter.",
+  spe_mars:"NASA's Curiosity rover carries a radiation detector called RAD. In September 2017 it measured a solar storm from the surface of Mars. The thin air helped, but the dose still doubled.",
+  leak:"In December 2022 a tiny micrometeoroid punched a hole in a Soyuz spacecraft docked to the International Space Station, and its coolant sprayed into space. Crews train to find and patch leaks fast.",
+  dusty:"NASA's InSight lander ended its mission in December 2022 because dust slowly covered its solar panels until it could not make enough power.",
+  clog:"On the International Space Station, astronauts recycle sweat, breath moisture and even urine into drinking water. In 2023 the system reached 98% recovery.",
+  mc:"Astronauts on the Space Station work on hundreds of experiments every year. Crew time is one of the most limited resources in space.",
+  rover:"Moon dust is sharp like broken glass. On Apollo 17 the astronauts fixed a broken rover fender with maps and duct tape to stop dust spraying them.",
+  gh:"NASA's Veggie garden on the Space Station has grown lettuce, cabbage, kale and zinnia flowers. Astronauts ate space-grown lettuce for the first time in 2015.",
+  o2:"Each astronaut needs about 0.84 kg of oxygen every day. The Space Station makes it by splitting water with electricity.",
+  dose:"NASA limits an astronaut's whole career to 600 millisieverts of radiation. Curiosity measured about 0.67 mSv per day on Mars; the Moon's surface gets about 1.4 mSv per day.",
+  power:"NASA is developing small nuclear reactors (Fission Surface Power) so a Moon base can keep running through the cold, dark lunar night."
+};
+
+function rng(seed){var a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function plan(site,seed){
+  var r=rng(seed*7919+(site==="moon"?1:2)), ri=function(n){return Math.floor(r()*n)};
+  var solar=[],ev={},i;
+  for(i=0;i<=DAYS+3;i++)solar[i]=1;
+  function put(d,id){while(ev[d]&&d<DAYS)d++; if(d<=DAYS)ev[d]=id}
+  if(site==="mars"){
+    var s=8+ri(4),len=4+ri(3);
+    for(i=0;i<len;i++)solar[s+i]=(i===0||i===len-1)?0.5:0.2;
+    put(s-1,"storm"); put(3+ri(2),"dusty"); put(s+len,"dusty");
+    put(s+len+2+ri(2),"leak"); put(21+ri(3),"spe"); put(25+ri(2),"clog"); put(5+ri(2),"mc"); put(28,"mc");
+  }else{
+    var a=6+ri(2),b=18+ri(3);
+    for(i=0;i<3;i++)solar[a+i]=0; for(i=0;i<4;i++)solar[b+i]=0;
+    put(a-1,"shadow"); put(b-1,"shadow");
+    put(10+ri(3),"spe"); put(25+ri(3),"spe"); put(14+ri(2),"leak"); put(16+ri(2),"rover"); put(3+ri(2),"mc"); put(23,"clog");
+  }
+  return {solar:solar,ev:ev};
+}
+
+function newGame(site,cadet,seed){
+  var p=plan(site,seed), k=cadet?1.2:1;
+  return {site:site,cadet:cadet,seed:seed,day:1,solar:p.solar,ev:p.ev,
+    batt:10,o2:Math.round(20*k),water:Math.round(220*k),food:Math.round(270*k),dose:0,health:100,science:0,shield:0,grow:0,
+    alloc:{ls:4,gh:1,sh:1,lab:1},rations:"full",task:"none",spares:2,
+    leak:false,dusty:false,clog:false,
+    today:{},pending:null,result:null,log:[],hist:[],facts:[],over:null,hints:cadet};
+}
+
+function genFor(S,d){
+  var site=SITES[S.site], f=S.solar[d]; if(f==null)f=1;
+  return Math.round(site.solar*f*(S.dusty?0.8:1))+REACTOR;
+}
+function demand(S){var a=S.alloc;return BASE_LOAD+a.ls+a.gh+a.sh+a.lab}
+function locked(S,k){
+  if(k==="lab")return S.today.shelter||S.task!=="none";
+  if(k==="sh")return S.today.shelter||S.today.roverDown;
+  return false;
+}
+function clampAlloc(S){
+  var a=S.alloc, avail=genFor(S,S.day)+S.batt;
+  ["lab","sh"].forEach(function(k){if(locked(S,k))a[k]=0});
+  var cut=false;
+  ["lab","sh","gh","ls"].forEach(function(k){while(demand(S)>avail&&a[k]>0){a[k]--;cut=true}});
+  return cut;
+}
+function addFact(S,id){if(S.facts.indexOf(id)<0)S.facts.push(id)}
+
+var EVENTS={
+  storm:{title:"Dust storm warning",fact:"storm",
+    text:"The orbiter sees a dust storm rolling toward the outpost. Starting tomorrow, the solar panels will make much less power for 4 to 6 sols.",
+    opts:[{b:"Understood",s:"Charge the battery today while the Sun still shines."}]},
+  shadow:{title:"Darkness tomorrow",fact:"shadow",
+    text:"Tomorrow the Sun slips behind the crater rim. The solar panels will make zero power for several days. Only the small reactor keeps running.",
+    opts:[{b:"Understood",s:"Charge the battery today. Check the forecast strip."}]},
+  dusty:{title:"Dusty solar panels",fact:"dusty",
+    text:"A layer of dust has settled on the solar panels. They make 20% less power until someone brushes them clean.",
+    opts:[{b:"Noted",s:"Pick the crew task \"Clean panels\" when you can spare a day of science."}],
+    run:function(S){S.dusty=true}},
+  leak:{title:"Air leak!",fact:"leak",
+    text:"A tiny meteoroid hit the habitat. The outpost is losing 1.5 kg of oxygen every day until the crew patches the hole.",
+    opts:[{b:"Noted",s:"Pick the crew task \"Patch leak\". The lab will be closed that day."}],
+    run:function(S){S.leak=true}},
+  clog:{title:"Water recycler clogged",fact:"clog",
+    text:"A filter in the water recycler is blocked. It now recovers only 70% of the water instead of 98%.",
+    opts:[{b:"Noted",s:"Pick the crew task \"Replace filter\". You have spare filters."}],
+    run:function(S){S.clog=true}},
+  rover:{title:"Rover wheel jammed",fact:"rover",
+    text:"Sharp Moon dust jammed a wheel on the shield rover. It cannot pile regolith today.",
+    opts:[{b:"OK",s:"Shield rover is offline today."}],
+    run:function(S){S.today.roverDown=true}},
+  mc:{title:"Request from Mission Control",fact:"mc",
+    text:"Scientists on Earth found something exciting in your last samples. If the lab runs at full power (level 3) today, you earn 40 bonus science points.",
+    opts:[{b:"We will try",s:"Bonus only counts if the lab is at level 3 today."},{b:"Not today",s:"Survival first. No bonus."}],
+    run:function(S,i){S.today.bonus=(i===0)}},
+  spe:{title:"Solar storm incoming!",fact:"spe",
+    text:"The Sun just fired a blast of fast particles toward you. It arrives within the hour. Your shield is at {shield}%.",
+    opts:[{b:"Everyone to the shelter",s:"Much lower dose. Lab and shield rover stop today."},{b:"Keep working",s:"Full day of work, but a much higher radiation dose."}],
+    run:function(S,i){S.today.spe=true;S.today.shelter=(i===0)}}
+};
+
+function chooseEvent(S,i){
+  var id=S.pending, e=EVENTS[id];
+  if(e.run)e.run(S,i);
+  addFact(S,(id==="spe"&&S.site==="mars")?"spe_mars":e.fact);
+  S.pending=null; clampAlloc(S);
+}
+
+function runDay(S){
+  var site=SITES[S.site], a=S.alloc, L=[], gen=genFor(S,S.day);
+  clampAlloc(S);
+  var dem=demand(S), avail=gen+S.batt;
+  function log(t,c){L.push({t:t,c:c||""})}
+  // crew task
+  if(S.task==="leak"&&S.leak){S.leak=false;log("Crew patched the leak. The habitat is airtight again.","good")}
+  if(S.task==="dusty"&&S.dusty){S.dusty=false;S.dose+=0.2;log("Crew brushed the solar panels clean. Full power returns tomorrow.","good")}
+  if(S.task==="clog"&&S.clog&&S.spares>0){S.clog=false;S.spares--;log("New filter installed. Water recycling is back to 98%.","good")}
+  // power
+  var baseOK=avail>=BASE_LOAD;
+  if(!baseOK){S.health-=20;log("Not enough power for heating and air fans. The habitat got dangerously cold.","bad");S.batt=0}
+  else{
+    var nb=S.batt+gen-dem, wasted=0;
+    if(nb>BATT_CAP){wasted=nb-BATT_CAP;nb=BATT_CAP}
+    if(gen-dem<0)log("Used "+(dem-gen)+" kW from the battery.","warn");
+    else if(wasted>0)log(wasted+" kW of sunshine was wasted because the battery is full.","");
+    S.batt=Math.max(0,nb);
+  }
+  // life support
+  var ls=a.ls/SYS.ls.max;
+  var o2d=O2_PER_DAY*ls+0.15*a.gh-O2_PER_DAY-(S.leak?1.5:0);
+  S.o2=Math.max(0,Math.min(30,S.o2+o2d));
+  if(a.ls<4)log("Life support covered "+a.ls+" of 4 astronauts. The oxygen tank dropped "+Math.abs(o2d).toFixed(1)+" kg.","warn");
+  if(S.leak)log("The leak let 1.5 kg of oxygen escape.","bad");
+  var eff=S.clog?RECOVERY_CLOG:RECOVERY;
+  var wd=-WATER_PER_DAY+WATER_PER_DAY*eff*ls-ELECTROLYSIS*ls-1.5*a.gh;
+  S.water=Math.max(0,S.water+wd);
+  if(S.clog)log("Clogged filter: the recycler lost extra water today.","warn");
+  // food
+  var need=S.rations==="full"?12:6;
+  if(a.gh===0){if(S.grow>0){S.grow=Math.max(0,S.grow-2);log("Greenhouse lights off. The plants wilted a little.","warn")}}
+  else S.grow+=a.gh;
+  if(S.grow>=10){S.grow-=10;S.food+=30;log("Harvest! Fresh vegetables add 30 meals.","good");addFact(S,"gh")}
+  if(S.food>=need){S.food-=need;
+    if(S.rations==="half"){S.health-=4;log("Half rations: the crew is hungry and tired.","warn")}
+    else if(baseOK)S.health=Math.min(100,S.health+2);
+  }else{S.food=0;S.health-=25;log("There is no food left. The crew is getting weak.","bad")}
+  // radiation
+  var sh=S.shield/100, d=site.gcr*(1-0.6*sh);
+  if(S.today.spe){
+    var spike=S.today.shelter?site.spe*0.5*(1-0.9*sh):site.spe*(1-0.3*sh);
+    d+=spike;
+    log(S.today.shelter?"The crew waited out the solar storm in the shelter: +"+spike.toFixed(1)+" mSv.":"The crew worked through the solar storm: +"+spike.toFixed(1)+" mSv.",S.today.shelter?"good":"bad");
+  }
+  S.dose+=d;
+  if(a.sh>0){S.shield=Math.min(100,S.shield+4*a.sh)}
+  // science
+  var sci=a.lab*10;
+  if(S.today.bonus){if(a.lab===3){sci+=40;log("Mission Control is thrilled: +40 bonus science!","good")}else log("The lab was not at full power, so no bonus today.","")}
+  S.science+=sci;
+  if(sci>0&&!S.today.bonus)log("The lab earned "+sci+" science points.","good");
+  if(L.length===0)log("A quiet day. All systems normal.","good");
+  // record
+  S.hist.push({o2:S.o2,water:S.water,food:S.food,batt:S.batt,dose:S.dose,health:S.health,science:S.science});
+  S.log=L;
+  // end checks
+  var why=null;
+  if(S.o2<=0){S.o2=0;why="o2"} else if(S.water<=0){S.water=0;why="water"}
+  else if(S.dose>=DOSE_LIMIT)why="dose"; else if(S.health<=0){S.health=0;why=baseOK?"food":"power"}
+  if(why){S.over={win:false,why:why,day:S.day};return}
+  if(S.day>=DAYS){S.over={win:true,day:DAYS};return}
+  S.day++; S.today={}; S.task="none";
+  S.pending=S.ev[S.day]||null;
+  if(S.pending==="clog"&&S.spares<=0)S.pending=null;
+  if(clampAlloc(S))S.log.push({t:"Today there is not enough power for yesterday's plan, so some systems were turned down. Check the plan below.",c:"warn"});
+}
+
+function coach(S){
+  var a=S.alloc, left=DAYS-S.day+1, site=SITES[S.site], low=0, i;
+  for(i=1;i<=2;i++){var f=S.solar[S.day+i]; if(f!=null&&f<0.6&&S.day+i<=DAYS)low=i}
+  if(S.o2<8&&a.ls<4)return "Oxygen is low. Push life support to level 4 before anything else.";
+  if(S.leak&&S.task!=="leak")return "The leak wastes 1.5 kg of oxygen every day. Patch it now, even if it costs a day of science.";
+  if(low&&S.batt<18&&S.solar[S.day]>=0.6)return "Less sunlight is coming. Lower the lab or rover today so the battery can charge.";
+  if(S.solar[S.day]<0.6&&a.lab+a.sh>0&&S.batt<12)return "Power is scarce. Keep life support running and switch off the lab and rover until the Sun returns.";
+  if(S.clog&&S.task!=="clog"&&S.spares>0)return "A clogged recycler throws away water. Replace the filter soon.";
+  if(S.site==="moon"&&S.shield<60&&a.sh<2&&!locked(S,"sh"))return "The Moon has no air to stop radiation. Build the regolith shield early, before a solar storm arrives.";
+  if(S.food/12<left&&a.gh<2)return "You packed food for about "+Math.floor(S.food/12)+" days but "+left+" remain. Grow more in the greenhouse.";
+  if(S.dusty&&S.task!=="dusty")return "Dusty panels cost you power every day. Cleaning them pays off fast.";
+  if(S.water/ (left) < 5)return "Water is getting tight. Keep life support at level 4 so the recycler saves every drop.";
+  if(a.lab<3&&!locked(S,"lab")&&genFor(S,S.day)-demand(S)>0)return "Supplies look good and you have spare power. Run the lab higher to earn science.";
+  return "Systems are balanced. Check the forecast before you press the button.";
+}
+
+/* ================= view ================= */
+var app=document.getElementById("app"), S=null, setup={site:"moon",cadet:true,seed:""};
+function h(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function best(){try{return JSON.parse(localStorage.getItem("o30best")||"{}")}catch(e){return{}}}
+function saveBest(site,score){try{var b=best();if(!(b[site]>=score)){b[site]=score;localStorage.setItem("o30best",JSON.stringify(b))}}catch(e){}}
+
+function scene(S){
+  var mars=S.site==="mars", f=S.solar[S.day], storm=mars&&f<0.6, dark=!mars&&f===0;
+  var sky=mars?(storm?"#7a4a30":"#c98a5e"):(dark?"#03040a":"#070a18");
+  var ground=mars?(storm?"#6b3a22":"#a8532e"):(dark?"#2b2d36":"#8d8a82");
+  var ground2=mars?"#8a4222":(dark?"#1f2129":"#6f6c66");
+  var bermH=4+S.shield*0.42, plant=Math.min(1,S.grow/10);
+  var s='<svg viewBox="0 0 400 150" role="img" aria-label="'+h(SITES[S.site].name)+' outpost">';
+  s+='<rect width="400" height="150" fill="'+sky+'"/>';
+  if(!mars){var st=[[30,20],[80,45],[130,14],[190,34],[250,18],[300,50],[350,25],[380,60],[60,70],[220,62]];
+    st.forEach(function(p){s+='<circle cx="'+p[0]+'" cy="'+p[1]+'" r="1" fill="#ffffff"/>'});
+    s+='<circle cx="330" cy="30" r="9" fill="#4d8fd6"/><path d="M324 27q5-4 9 1q-3 5-9-1z" fill="#58d6a0"/>';
+    if(!dark)s+='<circle cx="60" cy="88" r="12" fill="#fff6d6"/>';
+  }else{
+    s+='<circle cx="70" cy="40" r="'+(storm?7:9)+'" fill="'+(storm?"#d9a27a":"#fff1d0")+'"/>';
+    s+='<path d="M0 100 L60 78 L120 96 L200 70 L280 94 L340 76 L400 98 V150 H0z" fill="'+ground2+'"/>';
+  }
+  if(!mars)s+='<path d="M0 104 L50 92 L110 102 L180 86 L260 100 L330 90 L400 104 V150 H0z" fill="'+ground2+'"/>';
+  s+='<rect y="112" width="400" height="38" fill="'+ground+'"/>';
+  // regolith berm behind habitat
+  s+='<ellipse cx="200" cy="114" rx="'+(52+S.shield*0.16)+'" ry="'+bermH+'" fill="'+ground2+'" stroke="'+ground+'" stroke-width="1"/>';
+  // habitat
+  s+='<path d="M160 116 V98 a40 30 0 0 1 80 0 V116z" fill="#e8ecf7" stroke="#8892b8" stroke-width="1.5"/>';
+  s+='<rect x="192" y="100" width="16" height="16" rx="2" fill="#3a4675"/><circle cx="176" cy="96" r="5" fill="'+(S.alloc.ls>0?"#ffd97a":"#3a4675")+'"/><circle cx="224" cy="96" r="5" fill="'+(S.alloc.lab>0?"#7cc4ff":"#3a4675")+'"/>';
+  // greenhouse
+  s+='<path d="M258 116 V104 a18 14 0 0 1 36 0 V116z" fill="'+(S.alloc.gh>0?"#bff0d2":"#56607f")+'" fill-opacity=".85" stroke="#8892b8" stroke-width="1.2"/>';
+  for(var i=0;i<4;i++)s+='<rect x="'+(263+i*7)+'" y="'+(114-2-plant*8)+'" width="3" height="'+(2+plant*8)+'" fill="#2f9e62"/>';
+  // solar panels
+  for(i=0;i<3;i++){var x=58+i*30;
+    s+='<line x1="'+(x+10)+'" y1="106" x2="'+(x+10)+'" y2="118" stroke="#8892b8" stroke-width="2"/>';
+    s+='<path d="M'+x+' 108 l22 -8 l0 6 l-22 8z" fill="'+(f===0?"#1b2140":"#2b4fa8")+'" stroke="#9fb4ea" stroke-width="1"/>';
+    if(S.dusty)s+='<path d="M'+x+' 108 l22 -8 l0 6 l-22 8z" fill="#c98a5e" fill-opacity=".6"/>';
+  }
+  // rover
+  var rx=S.alloc.sh>0?306:330;
+  s+='<rect x="'+rx+'" y="116" width="26" height="8" rx="2" fill="#f2b84b"/><circle cx="'+(rx+5)+'" cy="126" r="4" fill="#20263f" stroke="#8892b8"/><circle cx="'+(rx+21)+'" cy="126" r="4" fill="#20263f" stroke="#8892b8"/><path d="M'+rx+' 120 l-8 4 v4" stroke="#f2b84b" stroke-width="2" fill="none"/>';
+  // reactor
+  s+='<rect x="22" y="110" width="12" height="12" fill="#9aa3c7"/><path d="M18 110 h20 l-4 -8 h-12z" fill="#c9cfe6"/>';
+  if(storm)s+='<rect width="400" height="150" fill="#b8683c" fill-opacity=".45"/>';
+  if(S.today.spe)s+='<rect width="400" height="150" fill="#ff6b6b" fill-opacity=".14"/><text x="200" y="20" text-anchor="middle" font-family="monospace" font-size="11" fill="#ffd0d0">SOLAR STORM</text>';
+  s+='</svg>';
+  return s;
+}
+
+function gauge(label,val,unit,pct,state,left){
+  return '<div class="g" data-s="'+state+'"><span class="lab">'+label+'</span><span class="val">'+val+' <small>'+unit+'</small></span><div class="bar"><i style="width:'+Math.max(0,Math.min(100,pct))+'%"></i></div><span class="left">'+left+'</span></div>';
+}
+function st(v,warn,bad){return v<=bad?"bad":v<=warn?"warn":"ok"}
+
+function viewSetup(){
+  var b=best();
+  var s='<header class="hero"><span class="eyebrow">Junior Astronaut Mission Trainer</span><h1>Outpost 30</h1>'+
+   '<p>You command four astronauts on another world. Keep them alive for 30 days and bring home as much science as you can. Every kilowatt you spend on one system is a kilowatt another system does not get.</p></header>';
+  s+='<section class="stack"><h2>1. Choose your landing site</h2><div class="choices">';
+  Object.keys(SITES).forEach(function(k){var t=SITES[k];
+    s+='<button class="pick" data-site="'+k+'" aria-pressed="'+(setup.site===k)+'"><span class="tag">'+t.world+'</span><b>'+t.name+'</b><span class="small">'+t.blurb+'</span><span class="small" style="color:var(--warn)">'+t.threat+'</span>'+(b[k]?'<span class="tag">Your best: '+b[k]+' science</span>':'')+'</button>'});
+  s+='</div></section>';
+  s+='<section class="stack"><h2>2. Choose your rank</h2><div class="choices">'+
+   '<button class="pick" data-cadet="1" aria-pressed="'+setup.cadet+'"><span class="tag">Ages 9+</span><b>Cadet</b><span class="small">Extra supplies and a mission coach who gives a hint every day.</span></button>'+
+   '<button class="pick" data-cadet="0" aria-pressed="'+!setup.cadet+'"><span class="tag">Ages 12+</span><b>Commander</b><span class="small">Standard supplies. No hints unless you ask.</span></button></div></section>';
+  s+='<section class="stack"><h2>3. Launch</h2><div class="row"><label for="seed" class="small muted">Mission code (optional). A class that types the same code gets the same storms and can compare decisions.</label></div>'+
+   '<div class="row"><input class="code-in" id="seed" inputmode="numeric" maxlength="4" placeholder="e.g. 1969" value="'+h(setup.seed)+'"><button class="btn" id="go">Start mission</button></div></section>';
+  s+='<section class="stack"><h2>How a day works</h2><div class="how">'+
+   '<div><h3>Read the forecast</h3><p class="small muted">Sunlight changes. Storms and dark days are announced one day ahead.</p></div>'+
+   '<div><h3>Split the power</h3><p class="small muted">Life support, greenhouse, shield rover and science lab all want the same kilowatts.</p></div>'+
+   '<div><h3>See what happened</h3><p class="small muted">The log explains every change, and the debrief shows why the mission ended the way it did.</p></div></div></section>';
+  s+=foot();
+  app.innerHTML=s; app.dataset.site=setup.site;
+}
+function foot(){return '<footer>Outpost 30 was made by team Carpathian Cosmos for the 2026 NASA Space Apps Challenge. It uses published NASA figures but simplifies real engineering so a day fits in a minute. NASA does not endorse this project.</footer>'}
+
+function viewGame(){
+  var site=SITES[S.site], a=S.alloc, gen=genFor(S,S.day), dem=demand(S), left=DAYS-S.day+1, s="";
+  s+='<div class="topbar"><div><span class="eyebrow">'+site.world+' · '+site.name+' · code '+S.seed+'</span><h2>Outpost 30</h2></div><span class="daycount">'+site.dayWord+' '+S.day+' / '+DAYS+'</span></div>';
+  s+='<div class="scene">'+scene(S)+'</div>';
+  var foodDays=Math.floor(S.food/12);
+  s+='<div class="gauges">'+
+    gauge("Oxygen",S.o2.toFixed(1),"kg",S.o2/30*100,st(S.o2,8,4),"tank holds 30")+
+    gauge("Water",Math.round(S.water),"L",S.water/264*100,st(S.water/left,5,2.5),left+" days to go")+
+    gauge("Food",S.food,"meals",S.food/324*100,st(foodDays-left,-1,-8),"lasts "+foodDays+" days")+
+    gauge("Battery",S.batt,"kW",S.batt/BATT_CAP*100,st(S.batt,5,1),"holds "+BATT_CAP)+
+    gauge("Radiation",S.dose.toFixed(1),"mSv",S.dose/DOSE_LIMIT*100,S.dose>40?"bad":S.dose>28?"warn":"ok","limit "+DOSE_LIMIT+" · shield "+S.shield+"%")+
+    gauge("Crew health",Math.round(S.health),"%",S.health,st(S.health,60,30),"science "+S.science)+
+  '</div>';
+  // forecast
+  s+='<div class="stack"><h3>Power forecast <span class="muted small">(kW the outpost will generate)</span></h3><div class="forecast">';
+  for(var i=0;i<5&&S.day+i<=DAYS;i++){var d=S.day+i,g=genFor(S,d),known=i<=1||S.site==="moon"||S.solar[S.day]<0.6;
+    s+='<div class="fc" data-today="'+(i===0?1:0)+'" data-low="'+(known&&S.solar[d]<0.6?1:0)+'"><span>'+(i===0?"Today":site.dayWord+" "+d)+'</span><b>'+(known?g:"?")+'</b></div>'}
+  s+='</div></div>';
+
+  if(S.pending){
+    var e=EVENTS[S.pending], fid=(S.pending==="spe"&&S.site==="mars")?"spe_mars":e.fact;
+    s+='<section class="panel event stack"><span class="eyebrow">New situation</span><h2>'+e.title+'</h2><p>'+e.text.replace("{shield}",S.shield)+'</p>'+
+      '<p class="fact"><b>It really happened</b>'+FACTS[fid]+'</p><div class="opt">';
+    e.opts.forEach(function(o,i){s+='<button data-opt="'+i+'"><b>'+o.b+'</b><span>'+o.s+'</span></button>'});
+    s+='</div></section>';
+  }else{
+    if(S.hints)s+='<p class="coach"><b>Mission coach</b>'+coach(S)+'</p>';
+    s+='<section class="panel stack"><h2>Today\'s power plan</h2><div class="budget"><span>Sun + reactor: <b>'+gen+' kW</b></span><span>Planned use: <b>'+dem+' kW</b></span><span class="'+(gen-dem<0?"neg":"")+'">'+(gen-dem<0?"Battery drains "+(dem-gen):"Battery charges +"+Math.min(gen-dem,BATT_CAP-S.batt))+'</span></div>'+
+      '<p class="small muted">Heating, air fans and radio always take '+BASE_LOAD+' kW.</p><div>';
+    var avail=gen+S.batt;
+    Object.keys(SYS).forEach(function(k){var y=SYS[k], lk=locked(S,k), pips="";
+      for(var i=0;i<y.max;i++)pips+='<i class="'+(i<a[k]?"on":"")+'"></i>';
+      s+='<div class="sys"><span class="name">'+y.name+' <span class="muted small">'+a[k]+' kW</span></span><div class="step"><button data-dec="'+k+'" aria-label="Less power to '+y.name+'" '+(a[k]<=0||lk?"disabled":"")+'>−</button><div class="pips">'+pips+'</div><button data-inc="'+k+'" aria-label="More power to '+y.name+'" '+(a[k]>=y.max||lk||dem>=avail?"disabled":"")+'>+</button></div>'+
+        '<span class="does">'+(lk?'<span class="lock">Offline today'+(k==="lab"&&S.task!=="none"?" (crew is busy with a repair)":"")+'. </span>':"")+y.does+(k==="sh"?" Now "+S.shield+"%.":k==="gh"?" Growth "+S.grow+"/10.":"")+'</span></div>'});
+    s+='</div>';
+    var tasks=[["none","Run the lab"]];
+    if(S.leak)tasks.push(["leak","Patch leak"]); if(S.dusty)tasks.push(["dusty","Clean panels"]); if(S.clog&&S.spares>0)tasks.push(["clog","Replace filter ("+S.spares+" spare)"]);
+    if(tasks.length>1&&!S.today.shelter){s+='<div class="stack"><h3>Crew task today <span class="muted small">(a repair closes the lab)</span></h3><div class="chips">';
+      tasks.forEach(function(t){s+='<button class="chip" data-task="'+t[0]+'" aria-pressed="'+(S.task===t[0])+'">'+t[1]+'</button>'});s+='</div></div>'}
+    s+='<div class="stack"><h3>Meals</h3><div class="chips"><button class="chip" data-rat="full" aria-pressed="'+(S.rations==="full")+'">Full meals (12 a day)</button><button class="chip" data-rat="half" aria-pressed="'+(S.rations==="half")+'">Half rations (6 a day, health drops)</button></div></div>';
+    s+='<button class="btn wide" id="run">Run '+site.dayWord.toLowerCase()+' '+S.day+'</button></section>';
+  }
+  if(S.log.length){s+='<section class="stack"><h3>What happened yesterday</h3><ul class="log">';
+    S.log.forEach(function(l){s+='<li class="'+l.c+'">'+l.t+'</li>'});s+='</ul></section>'}
+  s+='<div class="row"><button class="btn ghost" id="hint">'+(S.hints?"Hide":"Show")+' coach hints</button><button class="btn ghost" id="quit">Abort mission</button></div>';
+  app.innerHTML=s; app.dataset.site=S.site;
+}
+
+function spark(label,key,max,color,unit){
+  var v=S.hist.map(function(x){return x[key]}), n=v.length, pts="";
+  v.forEach(function(y,i){pts+=(n>1?i/(n-1)*196+2:100).toFixed(1)+","+(40-Math.max(0,Math.min(1,y/max))*36).toFixed(1)+" "});
+  var last=v[n-1]||0;
+  return '<div class="spark"><span class="lab">'+label+' · ended at '+(key==="dose"||key==="o2"?last.toFixed(1):Math.round(last))+' '+unit+'</span><svg viewBox="0 0 200 44" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="40" x2="200" y2="40" stroke="#2e3a66" stroke-width="1"/><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-linejoin="round"/></svg></div>';
+}
+var WHY={
+  o2:["The oxygen tank ran empty.","Oxygen is the resource with the least slack: four astronauts breathe 3.4 kg every day. Life support has to stay powered, and leaks have to be fixed first.","o2"],
+  water:["The water tanks ran dry.","Without recycling, a crew of four uses 16 litres a day. Real outposts recycle nearly every drop, so the recycler needs power and a working filter.","clog"],
+  dose:["The crew reached the radiation limit and had to evacuate.","Regolith piled on the habitat is the cheapest shield there is. It has to be built before a solar storm, and the crew should shelter when one arrives.","dose"],
+  food:["The crew ran out of food and became too weak to work.","Packed food runs out. A greenhouse takes days to pay back, so it has to start early and keep its lights on.","gh"],
+  power:["The habitat lost heat and air circulation.","When the Sun disappears, only the battery and the small reactor are left. Charging the battery before darkness matters more than one more day of science.","power"]
+};
+function viewDebrief(){
+  var site=SITES[S.site], o=S.over, s="", medal, msg;
+  if(o.win){
+    medal=S.science>=site.gold?"Gold mission patch":S.science>=site.silver?"Silver mission patch":"Bronze mission patch";
+    msg="All four astronauts are safe after "+DAYS+" days, with "+S.science+" science points. "+(S.science>=site.gold?"Outstanding balance of safety and science.":"Next target: "+(S.science>=site.silver?site.gold+" points for gold.":site.silver+" points for silver."));
+    saveBest(S.site,S.science);
+  }else{medal="Mission ended on "+site.dayWord.toLowerCase()+" "+o.day; msg=WHY[o.why][0]+" The crew returned safely to the lander, and you earned "+S.science+" science points."}
+  s+='<header class="hero"><span class="eyebrow">Mission debrief · '+site.world+' · code '+S.seed+'</span><h1 class="medal">'+medal+'</h1><p>'+msg+'</p></header>';
+  if(!o.win){addFact(S,WHY[o.why][2]);s+='<section class="panel stack"><h2>What a real mission planner would say</h2><p>'+WHY[o.why][1]+'</p></section>'}
+  s+='<section class="stack"><h2>Your mission in charts</h2><div class="sparks">'+
+    spark("Oxygen","o2",30,"#7cc4ff","kg")+spark("Water","water",264,"#58d6a0","L")+spark("Food","food",324,"#f5c04e","meals")+
+    spark("Battery","batt",BATT_CAP,"#f2b84b","kW")+spark("Radiation","dose",DOSE_LIMIT,"#ff6b6b","mSv")+spark("Science","science",Math.max(site.gold,S.science),"#c9a5ff","pts")+'</div></section>';
+  if(S.log.length){s+='<section class="stack"><h3>The final day</h3><ul class="log">';S.log.forEach(function(l){s+='<li class="'+l.c+'">'+l.t+'</li>'});s+='</ul></section>'}
+  if(S.facts.length){s+='<section class="stack"><h2>Real space facts you unlocked</h2><ul class="facts">';S.facts.forEach(function(f){s+='<li>'+FACTS[f]+'</li>'});s+='</ul></section>'}
+  s+='<section class="stack"><h2>Talk about it</h2><ul class="facts"><li>Which system did you give up first when power was short? Would you choose the same again?</li><li>What would change if the mission lasted 500 days instead of 30?</li><li>Why can a Mars crew not simply wait for a rescue ship?</li></ul></section>';
+  s+='<div class="row"><button class="btn" id="again">Replay code '+S.seed+'</button><button class="btn ghost" id="fresh">New mission</button></div>'+foot();
+  app.innerHTML=s; app.dataset.site=S.site;
+}
+
+function render(){ if(!S)viewSetup(); else if(S.over)viewDebrief(); else viewGame(); }
+
+app.addEventListener("click",function(ev){
+  var t=ev.target.closest("button"); if(!t)return; var d=t.dataset;
+  if(!S){
+    var inp=document.getElementById("seed"); if(inp)setup.seed=inp.value.replace(/\D/g,"");
+    if(d.site){setup.site=d.site} else if(d.cadet!=null){setup.cadet=d.cadet==="1"}
+    else if(t.id==="go"){var seed=parseInt(setup.seed,10); if(!(seed>0))seed=1000+Math.floor(Math.random()*9000);
+      S=newGame(setup.site,setup.cadet,seed); S.pending=S.ev[1]||null; clampAlloc(S); window.scrollTo(0,0)}
+    render(); return;
+  }
+  if(S.over){
+    if(t.id==="again"){var o=S; S=newGame(o.site,o.cadet,o.seed); S.pending=S.ev[1]||null; clampAlloc(S)}
+    else if(t.id==="fresh"){S=null}
+    window.scrollTo(0,0); render(); return;
+  }
+  if(d.opt!=null)chooseEvent(S,+d.opt);
+  else if(d.inc){if(demand(S)<genFor(S,S.day)+S.batt&&S.alloc[d.inc]<SYS[d.inc].max&&!locked(S,d.inc))S.alloc[d.inc]++}
+  else if(d.dec){if(S.alloc[d.dec]>0)S.alloc[d.dec]--}
+  else if(d.task){S.task=d.task; clampAlloc(S)}
+  else if(d.rat){S.rations=d.rat}
+  else if(t.id==="hint"){S.hints=!S.hints}
+  else if(t.id==="quit"){S=null; window.scrollTo(0,0)}
+  else if(t.id==="run"){runDay(S); window.scrollTo(0,0)}
+  render();
+});
+
+// test hook for the balance script (node) and live-update state keeping (viewer)
+window.__o30={newGame:newGame,runDay:runDay,chooseEvent:chooseEvent,clampAlloc:clampAlloc,genFor:genFor,demand:demand,SITES:SITES,locked:locked};
+function start(data){ if(data&&data.S)S=data.S; if(data&&data.setup)setup=data.setup; render(); }
+var hot=window.claude&&window.claude.hot;
+if(hot&&hot.snapshot)hot.snapshot(function(){return {S:S,setup:setup}});
+if(hot&&hot.ready)hot.ready(start); else start((hot&&hot.data)||{});
+})();
+</script>
+</body>
+</html>

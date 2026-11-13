@@ -1,0 +1,43 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Outpost 30 demo</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+@page{size:1280px 720px;margin:0}
+*{box-sizing:border-box}
+body{margin:0;background:#0d1226;color:#eef1fb;font-family:"Atkinson Hyperlegible",Verdana,sans-serif;font-size:24px;line-height:1.4}
+.s{width:1280px;height:720px;padding:56px 72px;display:flex;gap:56px;align-items:center;page-break-after:always;overflow:hidden;position:relative}
+.t{flex:1;display:flex;flex-direction:column;gap:20px;min-width:0}
+h1,h2{font-family:"Chakra Petch","Trebuchet MS",sans-serif;margin:0;line-height:1.1}
+h1{font-size:96px} h2{font-size:50px}
+.e{font-family:"JetBrains Mono",monospace;font-size:17px;letter-spacing:.14em;text-transform:uppercase;color:#f2b84b}
+.m{color:#a3add0}
+img{height:608px;border-radius:22px;border:2px solid #2e3a66;flex:none}
+ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:12px}
+table{border-collapse:collapse;font-size:21px;width:100%}
+td,th{text-align:left;padding:10px 14px;border-bottom:1px solid #2e3a66}
+th{font-family:"JetBrains Mono",monospace;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:#a3add0}
+td:nth-child(2){font-family:"JetBrains Mono",monospace;color:#f2b84b;white-space:nowrap}
+.n{position:absolute;right:40px;bottom:28px;font-family:"JetBrains Mono",monospace;font-size:15px;color:#a3add0}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.cols div{border-top:3px solid #f2b84b;padding-top:12px}
+b{color:#fff}
+</style></head><body>
+<section class="s"><div class="t"><span class="e">2026 NASA Space Apps Challenge · Junior Astronaut Mission Trainer</span><h1>Outpost 30</h1><p>Four astronauts. Thirty days. One power budget.<br>A browser game where students run a Moon or Mars outpost and feel the trade-offs that decide a mission.</p><p class="m">Team Carpathian Cosmos</p></div><img src="screen-setup.png" alt=""><span class="n">1 / 7</span></section>
+
+<section class="s"><div class="t"><span class="e">The problem</span><h2>Space lessons skip the hard part</h2><p>Most space content for young learners either hides the engineering trade-offs or buries them in complexity.</p><div class="cols"><div><b>Too simple</b><br><span class="m">Quizzes and facts. Nothing can go wrong, so nothing has to be decided.</span></div><div><b>Too complex</b><br><span class="m">Full simulators with dozens of systems lose a 10 year old in minutes.</span></div></div><p>Real missions are decided by a question a child can understand: <b>there is not enough power for everything, so what do you switch off?</b></p></div><span class="n">2 / 7</span></section>
+
+<section class="s"><div class="t"><span class="e">Our solution</span><h2>One decision a day</h2><ul><li><b>Read the forecast.</b> Sunlight changes. Storms and dark days are announced one day ahead.</li><li><b>Split the power</b> between life support, greenhouse, shield rover and science lab.</li><li><b>See what happened.</b> A plain-language log explains every change.</li></ul><p class="m">A full mission takes about ten minutes on a phone, tablet or laptop. No install, no account.</p></div><img src="screen-plan.png" alt="" style="height:auto;width:330px;align-self:flex-start"><span class="n">3 / 7</span></section>
+
+<section class="s"><div class="t"><span class="e">Events with a true story</span><h2>Shelter, or keep working?</h2><p>Solar storms, air leaks, dusty panels, a clogged water filter and requests from Mission Control interrupt the plan.</p><p>Every event card carries an <b>“It really happened”</b> note: the 1972 solar storm between Apollo 16 and 17, the dust storm that ended Opportunity, the dust that silenced InSight.</p><p class="m">The Moon punishes late shielding. Mars punishes an empty battery in a dust storm.</p></div><img src="screen-event.png" alt=""><span class="n">4 / 7</span></section>
+
+<section class="s"><div class="t"><span class="e">Built on published figures</span><h2>The numbers are real. The simplifications are labelled.</h2><table><tr><th>Quantity</th><th>In the game</th><th>Source</th></tr>
+<tr><td>Oxygen per astronaut</td><td>0.84 kg / day</td><td>NASA ECLSS</td></tr>
+<tr><td>Water recycling</td><td>98%</td><td>NASA, ISS milestone 2023</td></tr>
+<tr><td>Radiation, Mars surface</td><td>0.67 mSv / day</td><td>NASA Curiosity RAD</td></tr>
+<tr><td>Radiation, Moon surface</td><td>1.37 mSv / day</td><td>Chang'e 4 LND, Zhang et al. 2020</td></tr>
+<tr><td>Dust storm power loss</td><td>down to 20%</td><td>2018 global storm, Opportunity</td></tr></table>
+<p class="m" style="font-size:20px">Simplified on purpose: whole-kilowatt power blocks, a very productive greenhouse, storm doses tuned for a 30-day game. All listed in the README.</p></div><span class="n">5 / 7</span></section>
+
+<section class="s"><div class="t"><span class="e">Learning that sticks</span><h2>The debrief explains why</h2><ul><li>A mission patch, or the exact reason the mission ended</li><li>Charts of oxygen, water, food, battery, radiation and science</li><li>What a real mission planner would say</li><li>Discussion questions for the class</li></ul><p><b>Mission codes:</b> a 4-digit code replays the same storms, so a whole class can fly the same mission and compare decisions.</p></div><img src="screen-debrief.png" alt=""><span class="n">6 / 7</span></section>
+
+<section class="s"><div class="t"><span class="e">How it is built, and what is next</span><h2>One file. Any browser.</h2><div class="cols"><div><b>Tech</b><br><span class="m">Plain HTML, JavaScript and SVG. No backend, no tracking. A test script plays 2,400 missions to check the balance.</span></div><div><b>Use of AI</b><br><span class="m">Code, design and text were generated with Claude (Anthropic), directed and reviewed by the team. No AI images, audio or video.</span></div><div><b>Next</b><br><span class="m">Romanian and Spanish, live NASA DONKI space weather, a 500-day Mars mission, a teacher guide.</span></div><div><b>Play and source</b><br><span class="m" style="font-family:'JetBrains Mono',monospace;font-size:18px">andreipopescu-co.github.io/outpost-30<br>github.com/andreipopescu-co/outpost-30</span></div></div><p class="m" style="font-size:18px">Outpost 30 is a student project and is not endorsed by NASA.</p></div><span class="n">7 / 7</span></section>
+</body></html>
