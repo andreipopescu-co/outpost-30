@@ -410,7 +410,7 @@ function viewSetup(){
   s+=foot();
   app.innerHTML=s; app.dataset.site=setup.site;
 }
-function foot(){return '<footer>Outpost 30 was made by team Carpathian Cosmos for the 2026 NASA Space Apps Challenge. It uses published NASA figures but simplifies real engineering so a day fits in a minute. NASA does not endorse this project.</footer>'}
+function foot(){return '<footer>Outpost 30 was made by team Carpathian Cosmos for the 2026 NASA Space Apps Challenge. It uses published NASA figures but simplifies real engineering so a day fits in a minute. NASA does not endorse this project. Code, design and text were generated with an AI assistant (Claude, Anthropic), directed and reviewed by the team.</footer>'}
 
 function viewGame(){
   var site=SITES[S.site], a=S.alloc, gen=genFor(S,S.day), dem=demand(S), left=DAYS-S.day+1, s="";

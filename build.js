@@ -7,6 +7,7 @@ fs.writeFileSync('index.html',`<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="ai-disclosure" content="Code, design and text generated with Claude (Anthropic), directed and reviewed by team Carpathian Cosmos.">
 <meta name="description" content="Outpost 30: command a Moon or Mars outpost for 30 days. A Junior Astronaut Mission Trainer for the 2026 NASA Space Apps Challenge.">
 ${m[0]}<style>body{margin:0}[hidden]{display:none!important}</style>
 </head>
